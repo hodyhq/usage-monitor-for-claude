@@ -8,13 +8,51 @@ credentials directly - delegates to the Claude CLI binary.
 """
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-# Known installation locations
-CLAUDE_CLI_PATH = Path.home() / '.local' / 'bin' / 'claude.exe'
+
+def _discover_cli_path() -> Path:
+    """Discover the Claude Code CLI binary path.
+
+    Strategy
+    --------
+    1. ``shutil.which('claude')`` - respects PATH and PATHEXT.  A typical
+       npm install resolves to ``claude.cmd`` in ``%APPDATA%\\npm`` because
+       ``.CMD`` is in the default PATHEXT.
+    2. If the result is a ``.ps1`` shim (uncommon - happens when the user
+       has added ``.PS1`` to PATHEXT), substitute the sibling ``.cmd`` or
+       ``.exe``; subprocess cannot directly execute PowerShell scripts.
+    3. Fall back to the standard npm location at ``%APPDATA%\\npm``.
+    4. Last resort: return the native Windows installer path so callers'
+       ``is_file()`` checks fail gracefully and produce sensible logs.
+    """
+    found = shutil.which('claude')
+    if found:
+        path = Path(found)
+        if path.suffix.lower() == '.ps1':
+            for ext in ('.cmd', '.exe'):
+                alt = path.with_suffix(ext)
+                if alt.is_file():
+                    return alt
+        return path
+
+    appdata = os.environ.get('APPDATA')
+    if appdata:
+        for name in ('claude.cmd', 'claude.exe'):
+            candidate = Path(appdata) / 'npm' / name
+            if candidate.is_file():
+                return candidate
+
+    return Path.home() / '.local' / 'bin' / 'claude.exe'
+
+
+# Resolved at import time. The CLI path doesn't move during runtime.
+CLAUDE_CLI_PATH = _discover_cli_path()
 
 _EXTENSION_DIRS: list[tuple[str, Path]] = [
     ('VS Code', Path.home() / '.vscode' / 'extensions'),
