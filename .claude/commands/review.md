@@ -57,11 +57,7 @@ Summarize your findings before moving to the next step.
 
 ## Step 2: Documentation Updates
 
-### CHANGELOG.md
-- Does every user-facing change have a changelog entry under `## [Unreleased]`?
-- Are entries grouped correctly (Added / Changed / Fixed / Removed)?
-- Are entries written from the user's perspective?
-- Internal refactors, code style, or CLAUDE.md-only changes must NOT appear in the changelog.
+> Note: do NOT check `CHANGELOG.md` and do NOT flag a missing changelog entry - it is handled outside `/review`.
 
 ### README.md
 - If features were added, changed, or removed: is README.md updated to reflect this?
