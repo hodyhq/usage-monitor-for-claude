@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.15.1...HEAD)
+
+## [1.15.1] - 2026-05-17
+
 ### Fixed
 
 - Popup window now appears at the correct screen corner on high-DPI displays and on multi-monitor setups where the primary monitor is not positioned at virtual x=0; previously the popup could render oversized and overflow the screen edges at 150%/200% scaling, or land at the wrong edge when secondary monitors sat to the left of the primary (thanks to [@jnwildfire](https://github.com/jnwildfire) for the contribution)
 
-[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.15.0...HEAD)
+[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.15.0...v1.15.1)
 
 ## [1.15.0] - 2026-05-01
 
