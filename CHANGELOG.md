@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Today's Tokens section in the popup - per-model token counts (including models the usage API does not break out, like Fable 5) aggregated from the local Claude Code transcripts; fully offline and read-only
+- New popup theme settings: `accent` (logo tile and plan chip color) and `card_bg` (section card background)
+
+### Changed
+
+- Popup redesigned with a card-based layout: orange logo tile and plan chip in the header, session/weekly limits as progress rings with the time marker shown as a dot on the ring, and per-model limits grouped in a "By Model" section
+- Default popup field order now ranks model variants by family (Fable, Opus, Sonnet, Haiku - newest version first) instead of alphabetically; unknown families sort last
+
 ### Fixed
 
 - [Profile requests no longer ignore the rate-limit backoff](https://github.com/jens-duttke/usage-monitor-for-claude/issues/48) - while the API is returning HTTP 429, opening the popup could keep firing account-profile requests against the already rate-limited endpoint and prolong the backoff; profile fetches now wait out the backoff window like usage fetches do
