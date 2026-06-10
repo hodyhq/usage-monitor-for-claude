@@ -70,7 +70,9 @@ Must be an array of non-empty strings. `"*"` may appear at most once. Duplicates
 
 **Known field names:** `five_hour`, `seven_day`, `seven_day_sonnet`, `seven_day_opus`, `seven_day_cowork`, `seven_day_oauth_apps`
 
-**Default order** (used for `"*"` and when no setting is present): shorter periods first (`hour` before `day`), base field before variants, variants alphabetically.
+**Default order** (used for `"*"` and when no setting is present): shorter periods first (`hour` before `day`), base field before variants, variants by model family (Fable, Opus, Sonnet, Haiku - newest version first), unknown families last alphabetically.
+
+Base period fields (no variant suffix) render as progress rings at the top of the popup; model variant fields render as bars in the "By Model" section.
 
 **Examples:**
 
@@ -177,8 +179,10 @@ Override individual channels as RGBA arrays `[R, G, B, A]` (0-255). Unspecified 
 | `fg_dim` | `"#888888"` | Dimmed text (labels, reset times) |
 | `fg_heading` | `"#ffffff"` | Section headings |
 | `fg_link` | `"#4a9eff"` | Link text (e.g. changelog) |
-| `bar_bg` | `"#333333"` | Progress bar background |
-| `bar_fg` | `"#4a9eff"` | Progress bar fill |
-| `bar_fg_warn` | `"#e05050"` | Progress bar fill when usage outpaces elapsed time, error text |
+| `bar_bg` | `"#333333"` | Progress bar and ring track background |
+| `bar_fg` | `"#4a9eff"` | Progress bar and ring fill |
+| `bar_fg_warn` | `"#e05050"` | Bar/ring fill when usage outpaces elapsed time, error text |
 | `bar_divider` | `"#000c"` | Midnight divider on weekly progress bars |
-| `bar_marker` | `"#fffc"` | Time-position marker on progress bars |
+| `bar_marker` | `"#fffc"` | Time-position marker on progress bars and rings |
+| `accent` | `"#D97757"` | Accent color (header logo tile, plan chip) |
+| `card_bg` | `"#282828"` | Card background behind popup sections |

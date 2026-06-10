@@ -67,10 +67,12 @@
 const COLORS = {
     bg: '#1e1e1e', fg: '#cccccc', fg_dim: '#888888', fg_heading: '#ffffff', fg_link: '#4a9eff',
     bar_bg: '#333333', bar_fg: '#4a9eff', bar_fg_warn: '#e05050', bar_divider: '#000c', bar_marker: '#fffc',
+    accent: '#D97757', card_bg: '#282828',
 };
 const T = {
     title: 'Usage Monitor for Claude', account: 'ACCOUNT', email: 'Email', plan: 'Plan',
     usage: 'USAGE', extra_usage: 'EXTRA USAGE', claude_code: 'CLAUDE CODE', changelog: 'Changelog',
+    by_model: 'BY MODEL', todays_tokens: "TODAY'S TOKENS", tokens_local: 'local logs', tokens_out: 'out',
     status_updated_s: 'Updated {s}s ago', status_updated: 'Updated {duration} ago',
     status_next_update: 'Next update in {duration}', status_refreshing: 'Refreshing...',
     duration_hm: '{h}h {m}m', duration_m: '{m}m', duration_s: '{s}s',
@@ -80,16 +82,21 @@ const PRESETS = {
     full: {
         profile: { email: 'user@example.com', plan: 'Max (Team)' },
         usage: [
-            { label: 'Session (5hr)', pct_text: '42%', fill_pct: 0.42, warn: false,
+            { label: 'Session (5hr)', is_model: false, pct_text: '42%', fill_pct: 0.42, warn: false,
               reset_text: 'Resets in 2h 30m (14:30)', midnights: [], marker_rel: 0.35 },
-            { label: 'Weekly (7 day)', pct_text: '65%', fill_pct: 0.65, warn: true,
+            { label: 'Weekly (7 day)', is_model: false, pct_text: '65%', fill_pct: 0.65, warn: true,
               reset_text: 'Resets on Sat, 12:00', midnights: [0.143, 0.286, 0.429, 0.571, 0.714, 0.857], marker_rel: 0.55 },
-            { label: 'Weekly (Sonnet)', pct_text: '30%', fill_pct: 0.30, warn: false,
+            { label: 'Weekly (Sonnet)', is_model: true, pct_text: '30%', fill_pct: 0.30, warn: false,
               reset_text: 'Resets on Sat, 12:00', midnights: [0.143, 0.286, 0.429, 0.571, 0.714, 0.857], marker_rel: 0.55 },
-            { label: 'Weekly (Opus)', pct_text: '12%', fill_pct: 0.12, warn: false,
+            { label: 'Weekly (Opus)', is_model: true, pct_text: '12%', fill_pct: 0.12, warn: false,
               reset_text: 'Resets on Sat, 12:00', midnights: [0.143, 0.286, 0.429, 0.571, 0.714, 0.857], marker_rel: 0.55 },
         ],
         extra: { pct_text: '23%', fill_pct: 0.23, spent_text: '$4.60 / $20.00 spent' },
+        tokens: [
+            { name: 'Fable 5', total_text: '46.6M', output_text: '401.6k' },
+            { name: 'Opus 4.8', total_text: '12.5M', output_text: '101.8k' },
+            { name: 'Haiku 4.5', total_text: '16.1M', output_text: '1.0M' },
+        ],
         installations: [
             { name: 'CLI', version: '2.1.69' },
             { name: 'VS Code', version: '2.1.69' },
@@ -100,37 +107,40 @@ const PRESETS = {
     minimal: {
         profile: null,
         usage: [
-            { label: 'Session (5hr)', pct_text: '10%', fill_pct: 0.10, warn: false,
+            { label: 'Session (5hr)', is_model: false, pct_text: '10%', fill_pct: 0.10, warn: false,
               reset_text: 'Resets in 4h 50m (17:00)', midnights: [], marker_rel: 0.03 },
         ],
         extra: null,
+        tokens: [],
         installations: [],
         status: () => ({ last_success_time: now() - 90, next_poll_time: now() + 90, refreshing: false, error: null }),
     },
     error: {
         profile: { email: 'user@example.com', plan: 'Max' },
         usage: [
-            { label: 'Session (5hr)', pct_text: '95%', fill_pct: 0.95, warn: true,
+            { label: 'Session (5hr)', is_model: false, pct_text: '95%', fill_pct: 0.95, warn: true,
               reset_text: 'Resets in 12m (12:12)', midnights: [], marker_rel: 0.96 },
-            { label: 'Weekly (7 day)', pct_text: '88%', fill_pct: 0.88, warn: true,
+            { label: 'Weekly (7 day)', is_model: false, pct_text: '88%', fill_pct: 0.88, warn: true,
               reset_text: 'Resets tomorrow, 08:00', midnights: [0.143, 0.286, 0.429, 0.571, 0.714, 0.857], marker_rel: 0.80 },
         ],
         extra: null,
+        tokens: [],
         installations: [{ name: 'CLI', version: '2.1.69' }],
         status: () => ({ last_success_time: now() - 300, next_poll_time: now() + 30, refreshing: false, error: 'Could not connect to Anthropic API.' }),
     },
     refreshing: {
         profile: { email: 'user@example.com', plan: 'Max (Team)' },
         usage: [
-            { label: 'Session (5hr)', pct_text: '42%', fill_pct: 0.42, warn: false,
+            { label: 'Session (5hr)', is_model: false, pct_text: '42%', fill_pct: 0.42, warn: false,
               reset_text: 'Resets in 2h 30m (14:30)', midnights: [], marker_rel: 0.35 },
         ],
         extra: null,
+        tokens: [],
         installations: [{ name: 'CLI', version: '2.1.69' }],
         status: () => ({ last_success_time: now() - 180, next_poll_time: null, refreshing: true, error: null }),
     },
     loading: {
-        profile: null, usage: [], extra: null, installations: [],
+        profile: null, usage: [], extra: null, tokens: [], installations: [],
         status: { text: 'Refreshing...', is_error: false, refreshing: true },
     },
 };

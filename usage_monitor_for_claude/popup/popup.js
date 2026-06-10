@@ -3,6 +3,11 @@ let statusState = {};
 let translations = {};
 let textTimerId = null;
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const RING_RADIUS = 26;
+const RING_CENTER = 32;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
 /**
  * Set CSS custom properties for theme colors and inject translation strings.
  *
@@ -22,8 +27,10 @@ function init(config) {
     document.getElementById('headingAccount').textContent = translations.account;
     document.getElementById('labelEmail').textContent = translations.email;
     document.getElementById('labelPlan').textContent = translations.plan;
-    document.getElementById('headingUsage').textContent = translations.usage;
+    document.getElementById('headingByModel').textContent = translations.by_model;
     document.getElementById('headingExtraUsage').textContent = translations.extra_usage;
+    document.getElementById('headingTokens').textContent = translations.todays_tokens;
+    document.getElementById('tokensNote').textContent = translations.tokens_local;
     document.getElementById('headingClaudeCode').textContent = translations.claude_code;
 
     const changelogLink = document.getElementById('changelogLink');
@@ -34,17 +41,22 @@ function init(config) {
     document.getElementById('appVersion').textContent = config.app_version;
 
     els = {
+        planChip: document.getElementById('planChip'),
         accountSection: document.getElementById('accountSection'),
         emailRow: document.getElementById('emailRow'),
         emailValue: document.getElementById('emailValue'),
         planRow: document.getElementById('planRow'),
         planValue: document.getElementById('planValue'),
         usageSection: document.getElementById('usageSection'),
-        usageBars: document.getElementById('usageBars'),
+        usageRings: document.getElementById('usageRings'),
+        modelSection: document.getElementById('modelSection'),
+        modelBars: document.getElementById('modelBars'),
         extraSection: document.getElementById('extraSection'),
         extraSpent: document.getElementById('extraSpent'),
         extraPct: document.getElementById('extraPct'),
         extraFill: document.getElementById('extraFill'),
+        tokensSection: document.getElementById('tokensSection'),
+        tokenRows: document.getElementById('tokenRows'),
         installSection: document.getElementById('installSection'),
         installRows: document.getElementById('installRows'),
         statusSection: document.getElementById('statusSection'),
@@ -63,6 +75,9 @@ function init(config) {
 function updateData(data) {
     const hasProfile = !!data.profile;
     els.accountSection.classList.toggle('visible', hasProfile);
+    const plan = hasProfile ? data.profile.plan : '';
+    els.planChip.textContent = plan;
+    els.planChip.classList.toggle('visible', !!plan);
     if (hasProfile) {
         els.emailValue.textContent = data.profile.email;
         els.emailRow.style.display = data.profile.email ? '' : 'none';
@@ -70,10 +85,17 @@ function updateData(data) {
         els.planRow.style.display = data.profile.plan ? '' : 'none';
     }
 
-    const hasUsage = !!data.usage?.length;
-    els.usageSection.classList.toggle('visible', hasUsage);
-    if (hasUsage) {
-        updateUsageBars(data.usage);
+    const rings = (data.usage || []).filter((entry) => !entry.is_model);
+    const models = (data.usage || []).filter((entry) => entry.is_model);
+
+    els.usageSection.classList.toggle('visible', rings.length > 0);
+    if (rings.length > 0) {
+        updateRings(rings);
+    }
+
+    els.modelSection.classList.toggle('visible', models.length > 0);
+    if (models.length > 0) {
+        updateUsageBars(models);
     }
 
     const hasExtra = !!data.extra;
@@ -82,6 +104,26 @@ function updateData(data) {
         els.extraSpent.textContent = data.extra.spent_text;
         els.extraPct.textContent = data.extra.pct_text;
         els.extraFill.style.width = `${data.extra.fill_pct * 100}%`;
+    }
+
+    const hasTokens = !!data.tokens?.length;
+    els.tokensSection.classList.toggle('visible', hasTokens);
+    if (hasTokens) {
+        els.tokenRows.replaceChildren(...data.tokens.map((entry) => {
+            const row = document.createElement('div');
+            const dt = document.createElement('dt');
+            dt.textContent = entry.name;
+            const dd = document.createElement('dd');
+            const out = document.createElement('span');
+            out.className = 'token-out';
+            out.textContent = `${entry.output_text} ${translations.tokens_out}`;
+            const total = document.createElement('span');
+            total.className = 'token-total';
+            total.textContent = entry.total_text;
+            dd.append(out, total);
+            row.append(dt, dd);
+            return row;
+        }));
     }
 
     const hasInstalls = !!data.installations?.length;
@@ -151,6 +193,7 @@ function tickStatusText() {
     const secondsAgo = Math.max(0, Math.floor(now - statusState.lastSuccessTime));
     const isStale = !!statusState.nextPollTime && (now > statusState.nextPollTime + 30);
     els.usageSection.classList.toggle('stale', isStale);
+    els.modelSection.classList.toggle('stale', isStale);
     els.extraSection.classList.toggle('stale', isStale);
 
     const parts = [formatDuration(secondsAgo)];
@@ -166,7 +209,7 @@ function tickStatusText() {
         }
     }
 
-    els.statusText.textContent = parts.join(' \u00b7 ');
+    els.statusText.textContent = parts.join(' · ');
 }
 
 /**
@@ -208,18 +251,115 @@ function formatCountdown(totalSeconds) {
     return translations.duration_m.replace('{m}', totalMin);
 }
 
-function updateUsageBars(entries) {
-    if (entries.length !== els.usageBars.children.length) {
-        els.usageBars.replaceChildren(...entries.map(createBarElement));
+/* ------------------------------------------------------------------ */
+/* Rings (base usage periods)                                          */
+/* ------------------------------------------------------------------ */
+
+function updateRings(entries) {
+    if (entries.length !== els.usageRings.children.length) {
+        els.usageRings.replaceChildren(...entries.map(createRingElement));
         requestAnimationFrame(() => {
             for (let i = 0; i < entries.length; i++) {
-                els.usageBars.children[i].querySelector('.bar-fill').style.width =
+                applyRingState(els.usageRings.children[i], entries[i]);
+            }
+        });
+    } else {
+        for (let i = 0; i < entries.length; i++) {
+            updateRingElement(els.usageRings.children[i], entries[i]);
+        }
+    }
+}
+
+function svgEl(tag, attrs) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) {
+        el.setAttribute(key, value);
+    }
+    return el;
+}
+
+function createRingElement(entry) {
+    const div = document.createElement('div');
+    div.className = 'ring-entry';
+
+    const svg = svgEl('svg', { viewBox: '0 0 64 64' });
+    svg.appendChild(svgEl('circle', {
+        class: 'ring-track', cx: RING_CENTER, cy: RING_CENTER, r: RING_RADIUS,
+    }));
+    const fill = svgEl('circle', {
+        class: 'ring-fill', cx: RING_CENTER, cy: RING_CENTER, r: RING_RADIUS,
+        'stroke-dasharray': `0 ${RING_CIRCUMFERENCE}`,
+    });
+    svg.appendChild(fill);
+    const pct = svgEl('text', { class: 'ring-pct', x: RING_CENTER, y: RING_CENTER });
+    svg.appendChild(pct);
+    div.appendChild(svg);
+
+    const label = document.createElement('div');
+    label.className = 'ring-label';
+    label.textContent = entry.label;
+    div.appendChild(label);
+
+    const reset = document.createElement('div');
+    reset.className = 'reset-text';
+    div.appendChild(reset);
+
+    return div;
+}
+
+/**
+ * Apply percentage fill, warn color, time marker, and texts to a ring.
+ *
+ * The time marker is a small dot on the ring track at the angle matching
+ * the elapsed portion of the period (same data as the bar time marker).
+ */
+function applyRingState(div, entry) {
+    const fill = div.querySelector('.ring-fill');
+    fill.setAttribute('stroke-dasharray', `${entry.fill_pct * RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`);
+    fill.classList.toggle('warn', entry.warn);
+
+    div.querySelector('.ring-pct').textContent = entry.pct_text;
+
+    const svg = div.querySelector('svg');
+    let marker = svg.querySelector('.ring-marker');
+    if (entry.marker_rel !== null) {
+        const angle = entry.marker_rel * 2 * Math.PI - Math.PI / 2;
+        const cx = RING_CENTER + RING_RADIUS * Math.cos(angle);
+        const cy = RING_CENTER + RING_RADIUS * Math.sin(angle);
+        if (!marker) {
+            marker = svgEl('circle', { class: 'ring-marker', r: 2.2 });
+            svg.appendChild(marker);
+        }
+        marker.setAttribute('cx', cx.toFixed(2));
+        marker.setAttribute('cy', cy.toFixed(2));
+    } else if (marker) {
+        marker.remove();
+    }
+
+    div.querySelector('.reset-text').textContent = entry.reset_text || '';
+}
+
+function updateRingElement(div, entry) {
+    div.querySelector('.ring-label').textContent = entry.label;
+    applyRingState(div, entry);
+}
+
+/* ------------------------------------------------------------------ */
+/* Bars (model variants and extra usage)                               */
+/* ------------------------------------------------------------------ */
+
+function updateUsageBars(entries) {
+    if (entries.length !== els.modelBars.children.length) {
+        els.modelBars.replaceChildren(...entries.map(createBarElement));
+        requestAnimationFrame(() => {
+            for (let i = 0; i < entries.length; i++) {
+                els.modelBars.children[i].querySelector('.bar-fill').style.width =
                     `${entries[i].fill_pct * 100}%`;
             }
         });
     } else {
         for (let i = 0; i < entries.length; i++) {
-            updateBarElement(els.usageBars.children[i], entries[i]);
+            updateBarElement(els.modelBars.children[i], entries[i]);
         }
     }
 }

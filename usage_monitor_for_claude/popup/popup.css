@@ -9,8 +9,8 @@ body {
     line-height: 1.3;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 12px 16px 16px;
+    gap: 10px;
+    padding: 12px 14px 14px;
     user-select: none;
     -webkit-user-select: none;
     opacity: 0;
@@ -21,13 +21,26 @@ body {
 
 header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
 
-    & > span {
-        font-size: 15px;
+    & > #logo {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+
+        & .logo-tile { fill: var(--accent); }
+    }
+
+    & > #title {
+        font-size: 13.5px;
         font-weight: 700;
         color: var(--fg-heading);
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     & > button {
@@ -44,6 +57,19 @@ header {
     }
 }
 
+.chip {
+    display: none;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+
+    &.visible { display: inline-block; }
+}
+
 section, footer {
     display: none;
     flex-direction: column;
@@ -52,18 +78,20 @@ section, footer {
     &.visible { display: flex; }
 }
 
+section.card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
 section { transition: opacity 0.5s ease; }
 section.stale { opacity: 0.4; }
 
-section.visible ~ section.visible, section.visible ~ footer.visible {
-    border-top: 1px solid var(--bar-bg);
-    padding-top: 12px;
-}
-
 h2 {
-    padding-bottom: 6px;
-    font-size: 12px;
+    padding-bottom: 4px;
+    font-size: 11px;
     font-weight: 700;
+    letter-spacing: 0.8px;
     color: var(--fg-dim);
     text-transform: uppercase;
 }
@@ -78,6 +106,12 @@ h2 {
         color: var(--fg-link);
         text-decoration: underline;
         cursor: pointer;
+    }
+
+    & > .heading-note {
+        color: var(--fg-dim);
+        text-decoration: none;
+        cursor: default;
     }
 }
 
@@ -96,10 +130,73 @@ dl > div {
     & > dd { margin: 0; }
 }
 
-#usageBars {
+/* ---- Usage rings (base periods) ---- */
+
+#usageRings {
+    display: flex;
+    gap: 10px;
+}
+
+.ring-entry {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    gap: 4px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 12px 8px 10px;
+
+    & > svg {
+        width: 68px;
+        height: 68px;
+
+        & .ring-track {
+            fill: none;
+            stroke: var(--bar-bg);
+            stroke-width: 5.5;
+        }
+
+        & .ring-fill {
+            fill: none;
+            stroke: var(--bar-fg);
+            stroke-width: 5.5;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 32px 32px;
+            transition: stroke-dasharray 0.3s ease, stroke 0.3s ease;
+
+            &.warn { stroke: var(--bar-fg-warn); }
+        }
+
+        & .ring-marker {
+            fill: var(--bar-marker);
+        }
+
+        & .ring-pct {
+            fill: var(--fg-heading);
+            font-size: 14px;
+            font-weight: 700;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+    }
+
+    & > .ring-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    & > .reset-text { text-align: center; }
+}
+
+/* ---- Model and extra usage bars ---- */
+
+#modelBars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .usage-entry {
@@ -116,7 +213,8 @@ dl > div {
 
 .bar-container {
     position: relative;
-    height: 8px;
+    height: 7px;
+    border-radius: 4px;
     background: var(--bar-bg);
     overflow: hidden;
 
@@ -125,6 +223,7 @@ dl > div {
         top: 0;
         left: 0;
         height: 100%;
+        border-radius: 4px;
         background: var(--bar-fg);
         transition: width 0.3s ease, background-color 0.3s ease;
 
@@ -155,6 +254,25 @@ dl > div {
 .reset-text {
     font-size: 12px;
     color: var(--fg-dim);
+}
+
+/* ---- Today's tokens ---- */
+
+#tokenRows > div > dd {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+
+    & > .token-out {
+        font-size: 11px;
+        color: var(--fg-dim);
+    }
+
+    & > .token-total {
+        font-weight: 700;
+        min-width: 44px;
+        text-align: right;
+    }
 }
 
 footer {

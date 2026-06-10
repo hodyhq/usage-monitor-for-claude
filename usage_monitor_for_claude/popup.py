@@ -21,9 +21,10 @@ import webview  # type: ignore[import-untyped]  # no type stubs available
 
 from . import __version__
 from .claude_cli import CHANGELOG_URL, find_installations
-from .formatting import elapsed_pct, expand_popup_fields, field_period, format_credits, midnight_positions, popup_label, time_until
+from .formatting import elapsed_pct, expand_popup_fields, field_period, format_credits, midnight_positions, parse_field_name, popup_label, time_until
 from .i18n import T
-from .settings import BAR_BG, BAR_DIVIDER, BAR_FG, BAR_FG_WARN, BAR_MARKER, BG, FG, FG_DIM, FG_HEADING, FG_LINK, POPUP_FIELDS
+from .settings import ACCENT, BAR_BG, BAR_DIVIDER, BAR_FG, BAR_FG_WARN, BAR_MARKER, BG, CARD_BG, FG, FG_DIM, FG_HEADING, FG_LINK, POPUP_FIELDS
+from .token_stats import collect_token_stats
 
 _POPUP_DIR = Path(__file__).parent / 'popup'
 _BASELINE_DPI = 96
@@ -54,14 +55,21 @@ if TYPE_CHECKING:
 # Data helpers
 # ---------------------------------------------------------------------------
 
-def _usage_entries(usage: dict[str, Any]) -> list[tuple[str, dict[str, Any] | None, int | None]]:
-    """Return the list of usage entry tuples from the given usage data."""
+def _usage_entries(usage: dict[str, Any]) -> list[tuple[str, str, dict[str, Any] | None, int | None]]:
+    """Return the list of (field, label, entry, period) tuples from the given usage data."""
     fields = expand_popup_fields(POPUP_FIELDS, usage)
-    return [(popup_label(key), usage.get(key), field_period(key)) for key in fields]
+    return [(key, popup_label(key), usage.get(key), field_period(key)) for key in fields]
+
+
+def _is_model_field(field: str) -> bool:
+    """Return True when the field is a per-model variant (e.g. ``seven_day_sonnet``)."""
+    parsed = parse_field_name(field)
+    return parsed is not None and parsed[2] is not None
 
 
 def _snapshot_to_dict(
     snap: CacheSnapshot, installations: list[dict[str, str]] | None = None, next_poll_time: float | None = None,
+    tokens: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Convert a CacheSnapshot to a JSON-serializable dict for the popup JS.
 
@@ -73,6 +81,8 @@ def _snapshot_to_dict(
         Pre-computed installation list, or None to detect now.
     next_poll_time : float or None
         Unix timestamp of the next scheduled API poll.
+    tokens : list or None
+        Pre-computed token statistics, or None to collect now.
     """
     # Profile - truthiness check (not `is not None`): hides the account section when the API
     # returns an empty or incomplete response, instead of rendering empty Email/Plan fields.
@@ -85,10 +95,10 @@ def _snapshot_to_dict(
             'plan': org.get('organization_type', '').replace('_', ' ').title(),
         }
 
-    # Usage bars
+    # Usage entries - base periods render as rings, model variants as bars
     usage = []
     if snap.usage:
-        for label, entry, period in _usage_entries(snap.usage):
+        for field, label, entry, period in _usage_entries(snap.usage):
             if not entry or entry.get('utilization') is None:
                 continue
             pct = entry.get('utilization', 0) or 0
@@ -99,6 +109,7 @@ def _snapshot_to_dict(
 
             usage.append({
                 'label': label,
+                'is_model': _is_model_field(field),
                 'pct_text': f'{pct:.0f}%',
                 'fill_pct': max(0.0, min(1.0, pct / 100)),
                 'warn': warn,
@@ -128,6 +139,10 @@ def _snapshot_to_dict(
     if installations is None:
         installations = [{'name': i.name, 'version': i.version} for i in find_installations()]
 
+    # Today's per-model token usage from local transcripts
+    if tokens is None:
+        tokens = collect_token_stats()
+
     # Status - pass raw timestamps for JS live timer; fallback text for initial load
     if not snap.usage:
         if snap.last_error:
@@ -146,6 +161,7 @@ def _snapshot_to_dict(
         'profile': profile,
         'usage': usage,
         'extra': extra,
+        'tokens': tokens,
         'installations': installations,
         'status': status,
     }
@@ -157,10 +173,12 @@ def _init_config(snap: CacheSnapshot, next_poll_time: float | None = None) -> di
         'colors': {
             'bg': BG, 'fg': FG, 'fg_dim': FG_DIM, 'fg_heading': FG_HEADING, 'fg_link': FG_LINK,
             'bar_bg': BAR_BG, 'bar_fg': BAR_FG, 'bar_fg_warn': BAR_FG_WARN, 'bar_divider': BAR_DIVIDER, 'bar_marker': BAR_MARKER,
+            'accent': ACCENT, 'card_bg': CARD_BG,
         },
         't': {
             'title': T['popup_title'], 'account': T['account'], 'email': T['email'], 'plan': T['plan'],
             'usage': T['usage'], 'extra_usage': T['extra_usage'],
+            'by_model': T['by_model'], 'todays_tokens': T['todays_tokens'], 'tokens_local': T['tokens_local'], 'tokens_out': T['tokens_out'],
             'claude_code': T['claude_code'], 'changelog': T['changelog'],
             'status_updated_s': T['status_updated_s'], 'status_updated': T['status_updated'],
             'status_next_update': T['status_next_update'], 'status_refreshing': T['status_refreshing'],
@@ -403,6 +421,7 @@ class UsagePopup:
     def _update_loop(self) -> None:
         """Poll for data changes and push updates to the popup."""
         cached_installations = [{'name': i.name, 'version': i.version} for i in find_installations()]
+        cached_tokens = collect_token_stats()
         last_next_poll_time = self.app._next_poll_time
         while self._running:
             time.sleep(self._CHECK_MS / 1000)
@@ -416,8 +435,9 @@ class UsagePopup:
                 if snap.version != self._last_version:
                     self._last_version = snap.version
                     cached_installations = [{'name': i.name, 'version': i.version} for i in find_installations()]
+                    cached_tokens = collect_token_stats()
                 last_next_poll_time = next_poll_time
-                data = _snapshot_to_dict(snap, installations=cached_installations, next_poll_time=next_poll_time)
+                data = _snapshot_to_dict(snap, installations=cached_installations, next_poll_time=next_poll_time, tokens=cached_tokens)
                 self._window.evaluate_js(f'updateData({json.dumps(data)})')
             except Exception:
                 break

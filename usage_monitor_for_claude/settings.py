@@ -24,9 +24,9 @@ import sys
 from pathlib import Path
 
 __all__ = [
-    'ALERT_TIME_AWARE', 'ALERT_TIME_AWARE_BELOW',
+    'ACCENT', 'ALERT_TIME_AWARE', 'ALERT_TIME_AWARE_BELOW',
     'BAR_BG', 'BAR_FG', 'BAR_FG_WARN', 'BAR_MARKER', 'BG',
-    'CURRENCY_SYMBOL',
+    'CARD_BG', 'CURRENCY_SYMBOL',
     'FG', 'FG_DIM', 'FG_HEADING', 'FG_LINK',
     'ICON_DARK', 'ICON_FIELDS', 'ICON_LIGHT', 'IDLE_PAUSE',
     'LANGUAGE', 'MAX_BACKOFF',
@@ -46,7 +46,7 @@ _NUMERIC_BOUNDS: dict[str, int] = {
     'max_backoff': 1,
     'idle_pause': 0,
 }
-_COLOR_KEYS = frozenset({'bg', 'fg', 'fg_dim', 'fg_heading', 'fg_link', 'bar_bg', 'bar_fg', 'bar_fg_warn', 'bar_divider', 'bar_marker'})
+_COLOR_KEYS = frozenset({'bg', 'fg', 'fg_dim', 'fg_heading', 'fg_link', 'bar_bg', 'bar_fg', 'bar_fg_warn', 'bar_divider', 'bar_marker', 'accent', 'card_bg'})
 _ICON_KEYS = frozenset({'icon_light', 'icon_dark'})
 _THRESHOLD_KEY_PREFIX = 'alert_thresholds_'
 _PERCENT_KEYS = frozenset({'alert_time_aware_below'})
@@ -96,7 +96,7 @@ def _load_settings() -> dict:
 
 
 def _valid_rgba(value: object) -> bool:
-    """Return True if *value* is a list of exactly 4 integers in 0\u2013255."""
+    """Return True if *value* is a list of exactly 4 integers in 0–255."""
     return (
         isinstance(value, list) and len(value) == 4
         and all(isinstance(c, int) and not isinstance(c, bool) and 0 <= c <= 255 for c in value)
@@ -228,7 +228,7 @@ def _validate(data: dict, path: Path) -> dict:
             else:
                 bad = [k for k, v in value.items() if not _valid_rgba(v)]
                 for k in bad:
-                    errors.append(f'  {key}.{k}: expected [R, G, B, A] with integers 0\u2013255')
+                    errors.append(f'  {key}.{k}: expected [R, G, B, A] with integers 0–255')
                     del value[k]
 
     for key in drop:
@@ -270,6 +270,8 @@ BAR_FG = _S.get('bar_fg', '#4a9eff')
 BAR_FG_WARN = _S.get('bar_fg_warn', '#e05050')
 BAR_DIVIDER = _S.get('bar_divider', '#000c')
 BAR_MARKER = _S.get('bar_marker', '#fffc')
+ACCENT = _S.get('accent', '#D97757')
+CARD_BG = _S.get('card_bg', '#282828')
 
 # Tray icon colors
 ICON_LIGHT = _icon_colors('icon_light', {
