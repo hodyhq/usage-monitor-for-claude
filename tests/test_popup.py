@@ -56,7 +56,7 @@ class TestUsageEntries(unittest.TestCase):
             'seven_day': {'utilization': 10, 'resets_at': '2026-01-07T00:00:00Z'},
         }
         entries = _usage_entries(usage)
-        labels = [e[0] for e in entries]
+        labels = [e[1] for e in entries]
         self.assertEqual(labels, [popup_label('five_hour'), popup_label('seven_day')])
 
     def test_periods_derived_from_field_name(self):
@@ -66,7 +66,7 @@ class TestUsageEntries(unittest.TestCase):
             'seven_day': {'utilization': 10, 'resets_at': '2026-01-07T00:00:00Z'},
         }
         entries = _usage_entries(usage)
-        periods = [e[2] for e in entries]
+        periods = [e[3] for e in entries]
         self.assertEqual(periods, [5 * 3600, 7 * 24 * 3600])
 
     def test_data_extraction(self):
@@ -77,8 +77,8 @@ class TestUsageEntries(unittest.TestCase):
 
         entries = _usage_entries(usage)
         self.assertEqual(len(entries), 2)
-        self.assertIs(entries[0][1], five_hour)
-        self.assertIs(entries[1][1], seven_day)
+        self.assertIs(entries[0][2], five_hour)
+        self.assertIs(entries[1][2], seven_day)
 
     def test_empty_usage_returns_empty(self):
         """Empty usage dict returns no entries."""
@@ -97,7 +97,7 @@ class TestUsageEntries(unittest.TestCase):
         }
         entries = _usage_entries(usage)
         self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0][1]['utilization'], 20)
+        self.assertEqual(entries[0][2]['utilization'], 20)
 
     @patch('usage_monitor_for_claude.popup.POPUP_FIELDS', ['fve_hour', 'seven_day'])
     def test_misspelled_popup_field_skipped(self):
@@ -108,7 +108,7 @@ class TestUsageEntries(unittest.TestCase):
         }
         entries = _usage_entries(usage)
         self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0][1]['utilization'], 20)
+        self.assertEqual(entries[0][2]['utilization'], 20)
 
     @patch('usage_monitor_for_claude.popup.POPUP_FIELDS', ['seven_day_sonnet'])
     def test_popup_field_pointing_to_null_skipped(self):
@@ -134,7 +134,7 @@ class TestUsageEntries(unittest.TestCase):
         }
         entries = _usage_entries(usage)
         self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0][1]['utilization'], 42)
+        self.assertEqual(entries[0][2]['utilization'], 42)
 
 
 # ---------------------------------------------------------------------------
@@ -440,7 +440,7 @@ class TestSnapshotToDict(unittest.TestCase):
     def test_all_top_level_keys_present(self):
         """Result always has profile, usage, extra, installations, status."""
         result = _snapshot_to_dict(_snap(), installations=[])
-        self.assertEqual(set(result.keys()), {'profile', 'usage', 'extra', 'installations', 'status'})
+        self.assertEqual(set(result.keys()), {'profile', 'usage', 'extra', 'tokens', 'installations', 'status'})
 
 
 # ---------------------------------------------------------------------------
@@ -506,7 +506,7 @@ class TestInitConfig(unittest.TestCase):
         snap = _snap(profile={'account': {'email': 'a@b.com'}, 'organization': {}})
         config = _init_config(snap)
         self.assertEqual(config['data']['profile']['email'], 'a@b.com')
-        self.assertEqual(set(config['data'].keys()), {'profile', 'usage', 'extra', 'installations', 'status'})
+        self.assertEqual(set(config['data'].keys()), {'profile', 'usage', 'extra', 'tokens', 'installations', 'status'})
 
 
 # ---------------------------------------------------------------------------

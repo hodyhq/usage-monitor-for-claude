@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+[Show all code changes](https://github.com/hodyhq/usage-monitor-for-claude/compare/v1.16.0...HEAD)
+
+## [1.16.0] - 2026-06-10
+
 ### Added
 
 - Today's Tokens section in the popup - per-model token counts (including models the usage API does not break out, like Fable 5) aggregated from the local Claude Code transcripts; fully offline and read-only
@@ -21,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [Profile requests no longer ignore the rate-limit backoff](https://github.com/jens-duttke/usage-monitor-for-claude/issues/48) - while the API is returning HTTP 429, opening the popup could keep firing account-profile requests against the already rate-limited endpoint and prolong the backoff; profile fetches now wait out the backoff window like usage fetches do
 
-[Show all code changes](https://github.com/jens-duttke/usage-monitor-for-claude/compare/v1.15.1...HEAD)
+[Show all code changes](https://github.com/hodyhq/usage-monitor-for-claude/compare/v1.15.1...v1.16.0)
 
 ## [1.15.1] - 2026-05-17
 
