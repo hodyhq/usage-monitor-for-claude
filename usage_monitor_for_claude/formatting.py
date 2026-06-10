@@ -13,6 +13,7 @@ from typing import Any
 
 from .i18n import T
 from .settings import CURRENCY_SYMBOL, TOOLTIP_FIELDS, _SYSTEM_CURRENCY_SYMBOL
+from .token_stats import model_sort_key
 
 __all__ = [
     'elapsed_pct', 'expand_popup_fields', 'field_period', 'format_credits', 'format_tooltip',
@@ -139,16 +140,21 @@ def field_period(field: str) -> int | None:
     return None
 
 
-def _field_sort_key(field: str) -> tuple[int, int, int, str]:
-    """Sort key for default field ordering: shorter periods first, base before variants."""
+def _field_sort_key(field: str) -> tuple[int, int, int, tuple[int, float], str]:
+    """Sort key for default field ordering.
+
+    Shorter periods first, base fields before variants, then variants by
+    model family (Fable > Opus > Sonnet > Haiku, newest version first);
+    unknown families sort last, alphabetically.
+    """
     parsed = parse_field_name(field)
     if parsed is None:
-        return (2, 0, 0, field)
+        return (2, 0, 0, model_sort_key(''), field)
 
     number, unit, variant = parsed
     unit_order = 0 if unit == 'hour' else 1
     variant_order = 0 if variant is None else 1
-    return (unit_order, number, variant_order, variant or '')
+    return (unit_order, number, variant_order, model_sort_key(variant or ''), variant or '')
 
 
 def expand_popup_fields(popup_fields: list[str], usage_data: dict[str, Any]) -> list[str]:
@@ -325,7 +331,7 @@ def format_credits(cents: float) -> str:
         return formatted
     except (ValueError, _locale.Error):
         if CURRENCY_SYMBOL:
-            return f'{CURRENCY_SYMBOL}\u00a0{amount:.2f}'
+            return f'{CURRENCY_SYMBOL} {amount:.2f}'
         return f'{amount:.2f}'
 
 
