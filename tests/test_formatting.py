@@ -254,11 +254,11 @@ class TestExpandPopupFields(unittest.TestCase):
         result = expand_popup_fields(['*'], usage)
         self.assertEqual(result, ['seven_day', 'seven_day_sonnet'])
 
-    def test_default_order_variants_alphabetical(self):
-        """Default order sorts variants alphabetically."""
-        usage = self._usage(seven_day_opus=30, seven_day_cowork=20, seven_day_sonnet=10)
+    def test_default_order_variants_by_model_family(self):
+        """Default order sorts variants by model family rank, unknown families last."""
+        usage = self._usage(seven_day_opus=30, seven_day_cowork=20, seven_day_sonnet=10, seven_day_fable=40, seven_day_haiku=5)
         result = expand_popup_fields(['*'], usage)
-        self.assertEqual(result, ['seven_day_cowork', 'seven_day_opus', 'seven_day_sonnet'])
+        self.assertEqual(result, ['seven_day_fable', 'seven_day_opus', 'seven_day_sonnet', 'seven_day_haiku', 'seven_day_cowork'])
 
     def test_misspelled_field_skipped(self):
         """Misspelled field names are silently skipped."""
@@ -856,7 +856,7 @@ class TestFormatCredits(unittest.TestCase):
     @patch('usage_monitor_for_claude.formatting._locale.currency', side_effect=ValueError)
     def test_locale_error_uses_symbol_fallback(self, mock_currency):
         """Locale error falls back to manual formatting with symbol."""
-        self.assertEqual(format_credits(420.0), '¥\u00a04.20')
+        self.assertEqual(format_credits(420.0), '¥ 4.20')
 
     @patch('usage_monitor_for_claude.formatting._SYSTEM_CURRENCY_SYMBOL', '$')
     @patch('usage_monitor_for_claude.formatting.CURRENCY_SYMBOL', '$')
