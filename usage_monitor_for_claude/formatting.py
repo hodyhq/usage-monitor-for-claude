@@ -331,7 +331,7 @@ def format_credits(cents: float) -> str:
         return formatted
     except (ValueError, _locale.Error):
         if CURRENCY_SYMBOL:
-            return f'{CURRENCY_SYMBOL} {amount:.2f}'
+            return f'{CURRENCY_SYMBOL} {amount:.2f}'
         return f'{amount:.2f}'
 
 
